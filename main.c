@@ -129,6 +129,7 @@ void check_add_file(char *filename)
 		}
 	}
 	files[fileidx].loaded = false;
+	files[fileidx].marked = false;
 	files[fileidx].name = s_strdup(filename);
 	if (*filename == '/')
 		files[fileidx].path = files[fileidx].name;
