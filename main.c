@@ -349,6 +349,7 @@ void update_info(void)
 		}
 	} else {
 		n = snprintf(rt, rlen, "%s%3d%% | ", mark, (int) (img.zoom * 100.0));
+		n += snprintf(rt + n, rlen - n, "%dx%d | ", img.w, img.h);
 		if (img.multi.cnt > 0) {
 			for (fn = 0, i = img.multi.cnt; i > 0; fn++, i /= 10);
 			n += snprintf(rt + n, rlen - n, "%0*d/%d | ",
