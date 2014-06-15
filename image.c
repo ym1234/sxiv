@@ -252,7 +252,7 @@ bool img_load_gif(img_t *img, const fileinfo_t *file)
 		}
 	} while (rec != TERMINATE_RECORD_TYPE);
 
-	DGifCloseFile(gif);
+	DGifCloseFile(gif, NULL);
 
 	if (err && !file->loaded)
 		warn("corrupted gif file: %s", file->name);
