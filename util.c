@@ -39,8 +39,8 @@ void cleanup(void);
 void* s_malloc(size_t size)
 {
 	void *ptr;
-	
-	ptr = malloc(size);
+
+	ptr = calloc(1, size);
 	if (ptr == NULL)
 		die("could not allocate memory");
 	return ptr;
