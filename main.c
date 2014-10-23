@@ -357,7 +357,7 @@ void update_info(void)
 		n += snprintf(rt + n, rlen - n, "%0*d/%d", fw, sel + 1, filecnt);
 		ow_info = info.script == NULL;
 	}
-	if (ow_info) {
+	if (ow_info && files[sel].name) {
 		fn = strlen(files[sel].name);
 		if (fn < llen &&
 		    win_textwidth(files[sel].name, fn, true) +
