@@ -334,6 +334,7 @@ bool img_load(img_t *img, const fileinfo_t *file)
 	img->re = false;
 	img->checkpan = false;
 	img->dirty = true;
+    i_set_zoom(100);
 
 	return true;
 }

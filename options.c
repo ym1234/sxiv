@@ -60,7 +60,7 @@ void parse_options(int argc, char **argv)
 
 	_options.fixed_win = false;
 	_options.fullscreen = false;
-	_options.hide_bar = false;
+	_options.hide_bar = true;
 	_options.geometry = NULL;
 	_options.res_name = NULL;
 
@@ -76,7 +76,7 @@ void parse_options(int argc, char **argv)
 				print_usage();
 				exit(EXIT_FAILURE);
 			case 'b':
-				_options.hide_bar = true;
+				_options.hide_bar = false;
 				break;
 			case 'c':
 				_options.clean_cache = true;

@@ -79,8 +79,8 @@ int prefix;
 
 bool resized = false;
 
-bool dual_mode = false;
-bool manga_mode = false;
+bool dual_mode = true;
+bool manga_mode = true;
 
 const char * const ACHV_EXTRCT = "/tmp/sxiv-unarchive";
 const char * const INFO_SCRIPT = ".sxiv/exec/image-info";
@@ -532,7 +532,7 @@ void load_image(int new)
 		img_init(&second, &win);
 		memcpy(&combined, &img, sizeof(img_t));
 		if (img_load(&second, &files[linked]) &&
-			img_join(&combined, &second, &img, ((manga_mode && linked > new) || (!manga_mode && linked < new)))) {
+			img_join(&combined, &img, &second, ((manga_mode && linked > new) || (!manga_mode && linked < new)))) {
 			img_close(&img, false);
 			memcpy(&img, &combined, sizeof(img_t));
 		} else {
