@@ -59,7 +59,7 @@ void parse_options(int argc, char **argv)
 	_options.zoom = 1.0;
 
 	_options.fixed_win = false;
-	_options.fullscreen = false;
+	_options.fullscreen = true;
 	_options.hide_bar = true;
 	_options.geometry = NULL;
 	_options.res_name = NULL;
@@ -91,7 +91,7 @@ void parse_options(int argc, char **argv)
 				_options.fixed_win = true;
 				break;
 			case 'f':
-				_options.fullscreen = true;
+				_options.fullscreen = false;
 				break;
 			case 'g':
 				_options.geometry = optarg;
