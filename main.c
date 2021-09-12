@@ -380,7 +380,7 @@ void remove_file(int n, bool manual)
 	if (n < tns.cnt)
 		tns.cnt--;
 
-	refresh_dual_pages(n);
+	refresh_dual_pages(0);
 	refresh_archive_count();
 
 	if (dual_mode && linked != -1) {
@@ -532,7 +532,7 @@ void load_image(int new)
 		img_init(&second, &win);
 		memcpy(&combined, &img, sizeof(img_t));
 		if (img_load(&second, &files[linked]) &&
-			img_join(&combined, &img, &second, ((manga_mode && linked > new) || (!manga_mode && linked < new)))) {
+			img_join(&combined, &second, &img, ((manga_mode && linked > new) || (!manga_mode && linked < new)))) {
 			img_close(&img, false);
 			memcpy(&img, &combined, sizeof(img_t));
 		} else {
@@ -820,7 +820,6 @@ void run(void)
 	bool discard, to_set;
 	XEvent ev, nextev;
 	char *filename;
-
 	redraw();
 
 	while (true) {

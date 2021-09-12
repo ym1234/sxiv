@@ -457,7 +457,7 @@ void img_render(img_t *img)
 		else
 			img->y = 0;
 	}
-	
+
 	if (img->checkpan) {
 		img_check_pan(img, false);
 		img->checkpan = false;
@@ -497,7 +497,7 @@ void img_render(img_t *img)
 
 	if (!img->alpha && imlib_image_has_alpha())
 		win_draw_rect(win, win->pm, dx, dy, dw, dh, True, 0, win->white);
-	
+
 	imlib_context_set_drawable(win->pm);
 	imlib_render_image_part_on_drawable_at_size(sx, sy, sw, sh, dx, dy, dw, dh);
 
@@ -519,13 +519,13 @@ bool img_center(img_t *img)
 
 	if (img == NULL || img->im == NULL || img->win == NULL)
 		return false;
-	
+
 	ox = img->x;
 	oy = img->y;
 
 	img->x = (img->win->w - img->w * img->zoom) / 2;
 	img->y = (img->win->h - img->h * img->zoom) / 2;
-	
+
 	if (ox != img->x || oy != img->y) {
 		img->dirty = true;
 		return true;

@@ -317,7 +317,7 @@ bool it_navigate_marked(arg_t a)
 {
 	long n = (long) a;
 	int d, i, cnt, sel, new;
-	
+
 	if (mode == MODE_IMAGE)
 		cnt = filecnt, sel = new = fileidx;
 	else
@@ -426,7 +426,7 @@ bool i_drag(arg_t a)
 		return false;
 	if (!XQueryPointer(win.env.dpy, win.xwin, &w, &w, &i, &i, &ox, &oy, &ui))
 		return false;
-	
+
 	win_set_cursor(&win, CURSOR_HAND);
 
 	while (dragging) {
@@ -468,7 +468,7 @@ bool i_drag(arg_t a)
 			dx = dy = 0;
 		}
 	}
-	
+
 	win_set_cursor(&win, CURSOR_ARROW);
 	set_timeout(reset_cursor, TO_CURSOR_HIDE, true);
 	reset_timeout(redraw);
@@ -626,7 +626,7 @@ bool it_shell_cmd(arg_t a)
 	if (WIFEXITED(status) == 0 || WEXITSTATUS(status) != 0)
 		warn("child exited with non-zero return value: %d. command line was: %s",
 		     WEXITSTATUS(status), cmdline);
-	
+
 	if (mode == MODE_IMAGE) {
 		img_close(&img, true);
 		load_image(fileidx);
