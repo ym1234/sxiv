@@ -28,6 +28,9 @@
 #include "window.h"
 #include "config.h"
 
+#include <X11/Xft/Xft.h>
+#include <stdint.h>
+
 enum {
 	H_TEXT_PAD = 5,
 	V_TEXT_PAD = 1
@@ -41,48 +44,59 @@ static GC gc;
 
 Atom wm_delete_win;
 
-static struct {
-	int ascent;
-	int descent;
-	XFontStruct *xfont;
-	XFontSet set;
-} font;
+/* static struct { */
+/* 	int ascent; */
+/* 	int descent; */
+/* 	XFontStruct *xfont; */
+/* 	XFontSet set; */
+/* } font; */
 
+static XftFont *font;
 static int fontheight;
+static double fontsize;
 static int barheight;
 
 void win_init_font(Display *dpy, const char *fontstr)
 {
-	int n;
-	char *def, **missing;
-
-	font.set = XCreateFontSet(dpy, fontstr, &missing, &n, &def);
-	if (missing)
-		XFreeStringList(missing);
-	if (font.set) {
-		XFontStruct **xfonts;
-		char **font_names;
-
-		font.ascent = font.descent = 0;
-		XExtentsOfFontSet(font.set);
-		n = XFontsOfFontSet(font.set, &xfonts, &font_names);
-		while (n--) {
-			font.ascent  = MAX(font.ascent, (*xfonts)->ascent);
-			font.descent = MAX(font.descent,(*xfonts)->descent);
-			xfonts++;
-		}
-	} else {
-		if ((font.xfont = XLoadQueryFont(dpy, fontstr)) == NULL &&
-		    (font.xfont = XLoadQueryFont(dpy, "fixed")) == NULL)
-		{
-			die("could not load font: %s", fontstr);
-		}
-		font.ascent  = font.xfont->ascent;
-		font.descent = font.xfont->descent;
-	}
-	fontheight = font.ascent + font.descent;
+	if ((font = XftFontOpenName(dpy, DefaultScreen(dpy), fontstr)) == NULL)
+		error(EXIT_FAILURE, 0, "Error loading font '%s'", fontstr);
+	fontheight = font->ascent + font->descent;
+	FcPatternGetDouble(font->pattern, FC_SIZE, 0, &fontsize);
 	barheight = fontheight + 2 * V_TEXT_PAD;
 }
+
+/* void win_init_font(, const char *fontstr) */
+/* { */
+/* 	int n; */
+/* 	char *def, **missing; */
+
+/* 	font.set = XCreateFontSet(dpy, fontstr, &missing, &n, &def); */
+/* 	if (missing) */
+/* 		XFreeStringList(missing); */
+/* 	if (font.set) { */
+/* 		XFontStruct **xfonts; */
+/* 		char **font_names; */
+
+/* 		font.ascent = font.descent = 0; */
+/* 		XExtentsOfFontSet(font.set); */
+/* 		n = XFontsOfFontSet(font.set, &xfonts, &font_names); */
+/* 		while (n--) { */
+/* 			font.ascent  = MAX(font.ascent, (*xfonts)->ascent); */
+/* 			font.descent = MAX(font.descent,(*xfonts)->descent); */
+/* 			xfonts++; */
+/* 		} */
+/* 	} else { */
+/* 		if ((font.xfont = XLoadQueryFont(dpy, fontstr)) == NULL && */
+/* 		    (font.xfont = XLoadQueryFont(dpy, "fixed")) == NULL) */
+/* 		{ */
+/* 			die("could not load font: %s", fontstr); */
+/* 		} */
+/* 		font.ascent  = font.xfont->ascent; */
+/* 		font.descent = font.xfont->descent; */
+/* 	} */
+/* 	fontheight = font.ascent + font.descent; */
+/* 	barheight = fontheight + 2 * V_TEXT_PAD; */
+/* } */
 
 unsigned long win_alloc_color(win_t *win, const char *name)
 {
@@ -221,7 +235,7 @@ void win_open(win_t *win)
 	                          e->depth, InputOutput, e->vis, attr_mask, &attr);
 	if (win->xwin == None)
 		die("could not create window");
-	
+
 	XSelectInput(e->dpy, win->xwin,
 	             ExposureMask | ButtonReleaseMask | ButtonPressMask |
 	             KeyPressMask | PointerMotionMask | StructureNotifyMask);
@@ -396,19 +410,134 @@ void win_clear(win_t *win)
 	XFillRectangle(e->dpy, win->pm, gc, 0, 0, win->w, h);
 }
 
+#define UTF_SIZ       4
+#define UTF_INVALID   0xFFFD
+#define uchar char
+
+static const uchar utfbyte[UTF_SIZ + 1] = {0x80,    0, 0xC0, 0xE0, 0xF0};
+static const uchar utfmask[UTF_SIZ + 1] = {0xC0, 0x80, 0xE0, 0xF0, 0xF8};
+static const uint32_t utfmin[UTF_SIZ + 1] = {       0,    0,  0x80,  0x800,  0x10000};
+static const uint32_t utfmax[UTF_SIZ + 1] = {0x10FFFF, 0x7F, 0x7FF, 0xFFFF, 0x10FFFF};
+
+#define BETWEEN(x, a, b)	((a) <= (x) && (x) <= (b))
+#define LEN(a)			(sizeof(a) / sizeof(a)[0])
+
+
+size_t
+utf8validate(uint32_t *u, size_t i)
+{
+	if (!BETWEEN(*u, utfmin[i], utfmax[i]) || BETWEEN(*u, 0xD800, 0xDFFF))
+		*u = UTF_INVALID;
+	for (i = 1; *u > utfmax[i]; ++i)
+		;
+
+	return i;
+}
+
+uint32_t
+utf8decodebyte(char c, size_t *i)
+{
+	for (*i = 0; *i < LEN(utfmask); ++(*i))
+		if (((uchar)c & utfmask[*i]) == utfbyte[*i])
+			return (uchar)c & ~utfmask[*i];
+
+	return 0;
+}
+
+size_t
+utf8decode(const char *c, uint32_t *u, size_t clen)
+{
+	size_t i, j, len, type;
+	uint32_t udecoded;
+
+	*u = UTF_INVALID;
+	if (!clen)
+		return 0;
+	udecoded = utf8decodebyte(c[0], &len);
+	if (!BETWEEN(len, 1, UTF_SIZ))
+		return 1;
+	for (i = 1, j = 1; i < clen && j < len; ++i, ++j) {
+		udecoded = (udecoded << 6) | utf8decodebyte(c[i], &type);
+		if (type != 0)
+			return j;
+	}
+	if (j < len)
+		return 0;
+	*u = udecoded;
+	utf8validate(u, len);
+
+	return len;
+}
+
+#define TEXTWIDTH(win, text, len) \
+	win_draw_text(win, NULL, NULL, 0, 0, text, len, 0)
+
+int win_draw_text(win_t *win, XftDraw *d, unsigned long *color, int x, int y,
+                  char *text, int len, int w)
+{
+    unsigned long c = 0;
+    if (color != NULL) {
+        c = *color;
+    }
+#define TO16(c) \
+    ((unsigned short) (((float) (c) / 0xff) * 0xffffU))
+
+    XRenderColor xc;
+    xc.alpha = 0xfffff;
+    xc.blue = TO16(c & 0xff);
+    c >>= 8;
+    xc.green = TO16(c & 0xff);
+    c >>= 8;
+    xc.red = TO16(c & 0xff);
+
+    XftColor real_color;
+    XftColorAllocValue(win->env.dpy, win->env.vis, win->env.cmap, &xc, &real_color);
+
+	int err, tw = 0;
+	char *t, *next;
+	uint32_t rune;
+	XftFont *f;
+	FcCharSet *fccharset;
+	XGlyphInfo ext;
+
+	for (t = text; t - text < len; t = next) {
+		next = t + utf8decode(t, &rune, &err);
+		if (XftCharExists(win->env.dpy, font, rune)) {
+			f = font;
+		} else { /* fallback font */
+			fccharset = FcCharSetCreate();
+			FcCharSetAddChar(fccharset, rune);
+			f = XftFontOpen(win->env.dpy, win->env.scr, FC_CHARSET, FcTypeCharSet,
+			                fccharset, FC_SCALABLE, FcTypeBool, FcTrue, NULL);
+			FcCharSetDestroy(fccharset);
+		}
+		XftTextExtentsUtf8(win->env.dpy, f, (XftChar8*)t, next - t, &ext);
+		tw += ext.xOff;
+		if (tw <= w) {
+			XftDrawStringUtf8(d, &real_color, f, x, y, (XftChar8*)t, next - t);
+			x += ext.xOff;
+		}
+		if (f != font)
+			XftFontClose(win->env.dpy, f);
+	}
+	return tw;
+}
+
 void win_draw_bar(win_t *win)
 {
-	int len, olen, x, y, w, tw;
-	char rest[3];
-	const char *dots = "...";
+	int len, x, y, w, tw;
 	win_env_t *e;
+	char *l, *r;
+	XftDraw *d;
 
-	if (win == NULL || win->xwin == None || win->pm == None)
+	if ((l = win->bar.l) == NULL || (r = win->bar.r) == NULL)
 		return;
 
 	e = &win->env;
-	y = win->h + font.ascent + V_TEXT_PAD;
-	w = win->w;
+	y = win->h + font->ascent + V_TEXT_PAD;
+	w = win->w - 2*H_TEXT_PAD;
+	d = XftDrawCreate(e->dpy, win->pm, DefaultVisual(e->dpy, e->scr),
+	                  DefaultColormap(e->dpy, e->scr));
 
 	XSetForeground(e->dpy, gc, win->bar.bgcol);
 	XFillRectangle(e->dpy, win->pm, gc, 0, win->h, win->w, win->bar.h);
@@ -416,38 +545,76 @@ void win_draw_bar(win_t *win)
 	XSetForeground(e->dpy, gc, win->bar.fgcol);
 	XSetBackground(e->dpy, gc, win->bar.bgcol);
 
-	if ((len = strlen(win->bar.r)) > 0) {
-		if ((tw = win_textwidth(win->bar.r, len, true)) > w)
+	if ((len = strlen(r)) > 0) {
+		if ((tw = TEXTWIDTH(win, r, len)) > w)
 			return;
-		x = win->w - tw + H_TEXT_PAD;
+		x = win->w - tw - H_TEXT_PAD;
 		w -= tw;
-		if (font.set)
-			XmbDrawString(e->dpy, win->pm, font.set, gc, x, y, win->bar.r, len);
-		else
-			XDrawString(e->dpy, win->pm, gc, x, y, win->bar.r, len);
+		win_draw_text(win, d, &win->bar.fgcol, x, y, r, len, tw);
 	}
-	if ((len = strlen(win->bar.l)) > 0) {
-		olen = len;
-		while (len > 0 && (tw = win_textwidth(win->bar.l, len, true)) > w)
-			len--;
-		if (len > 0) {
-			if (len != olen) {
-				w = strlen(dots);
-				if (len <= w)
-					return;
-				memcpy(rest, win->bar.l + len - w, w);
-				memcpy(win->bar.l + len - w, dots, w);
-			}
-			x = H_TEXT_PAD;
-			if (font.set)
-				XmbDrawString(e->dpy, win->pm, font.set, gc, x, y, win->bar.l, len);
-			else
-				XDrawString(e->dpy, win->pm, gc, x, y, win->bar.l, len);
-			if (len != olen)
-			  memcpy(win->bar.l + len - w, rest, w);
-		}
+	if ((len = strlen(l)) > 0) {
+		x = H_TEXT_PAD;
+		w -= 2 * H_TEXT_PAD; /* gap between left and right parts */
+		win_draw_text(win, d, &win->bar.fgcol, x, y, l, len, w);
 	}
+	XftDrawDestroy(d);
 }
+
+/* void win_draw_bar(win_t *win) */
+/* { */
+/* 	int len, olen, x, y, w, tw; */
+/* 	char rest[3]; */
+/* 	const char *dots = "..."; */
+/* 	win_env_t *e; */
+
+/* 	if (win == NULL || win->xwin == None || win->pm == None) */
+/* 		return; */
+
+/* 	e = &win->env; */
+/* 	y = win->h + font.ascent + V_TEXT_PAD; */
+/* 	w = win->w; */
+
+/* 	XSetForeground(e->dpy, gc, win->bar.bgcol); */
+/* 	XFillRectangle(e->dpy, win->pm, gc, 0, win->h, win->w, win->bar.h); */
+
+/* 	XSetForeground(e->dpy, gc, win->bar.fgcol); */
+/* 	XSetBackground(e->dpy, gc, win->bar.bgcol); */
+
+/* 	if ((len = strlen(win->bar.r)) > 0) { */
+/* 		if ((tw = win_textwidth(win->bar.r, len, true)) > w) */
+/* 			return; */
+/* 		x = win->w - tw + H_TEXT_PAD; */
+/* 		w -= tw; */
+/*         /1* Xutf8DrawString(e->dpy, win->pm, font.set, gc, x, y, win->bar.l, len); *1/ */
+/* 		if (font.set) */
+/* 			XmbDrawString(e->dpy, win->pm, font.set, gc, x, y, win->bar.r, len); */
+/* 		else */
+/* 			XDrawString(e->dpy, win->pm, gc, x, y, win->bar.r, len); */
+/* 	} */
+/* 	if ((len = strlen(win->bar.l)) > 0) { */
+/* 		olen = len; */
+/* 		while (len > 0 && (tw = win_textwidth(win->bar.l, len, true)) > w) */
+/* 			len--; */
+/* 		if (len > 0) { */
+/* 			if (len != olen) { */
+/* 				w = strlen(dots); */
+/* 				if (len <= w) */
+/* 					return; */
+/* 				memcpy(rest, win->bar.l + len - w, w); */
+/* 				memcpy(win->bar.l + len - w, dots, w); */
+/* 			} */
+/* 			x = H_TEXT_PAD; */
+/* 			if (font.set) */
+/* 				XmbDrawString(e->dpy, win->pm, font.set, gc, x, y, win->bar.l, len); */
+/*             /1* Xutf8DrawString(e->dpy, win->pm, font.set, gc, x, y, win->bar.l, len); *1/ */
+/* 			else */
+/*                 XDrawString(e->dpy, win->pm, gc, x, y, win->bar.l, len); */
+/* 				/1* Xutf8DrawString(e->dpy, win->pm, font.set, gc, x, y, win->bar.l, len); *1/ */
+/* 			if (len != olen) */
+/* 			  memcpy(win->bar.l + len - w, rest, w); */
+/* 		} */
+/* 	} */
+/* } */
 
 void win_draw(win_t *win)
 {
@@ -491,18 +658,18 @@ void win_update_bar(win_t *win)
 	}
 }
 
-int win_textwidth(const char *text, unsigned int len, bool with_padding)
-{
-	XRectangle r;
-	int padding = with_padding ? 2 * H_TEXT_PAD : 0;
+/* int win_textwidth(const char *text, unsigned int len, bool with_padding) */
+/* { */
+/* 	XRectangle r; */
+/* 	int padding = with_padding ? 2 * H_TEXT_PAD : 0; */
 
-	if (font.set) {
-		XmbTextExtents(font.set, text, len, NULL, &r);
-		return r.width + padding;
-	} else {
-		return XTextWidth(font.xfont, text, len) + padding;
-	}
-}
+/* 	if (font.set) { */
+/* 		XmbTextExtents(font.set, text, len, NULL, &r); */
+/* 		return r.width + padding; */
+/* 	} else { */
+/* 		return XTextWidth(font.xfont, text, len) + padding; */
+/* 	} */
+/* } */
 
 void win_set_title(win_t *win, const char *title)
 {

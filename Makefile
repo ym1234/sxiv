@@ -3,10 +3,17 @@ VERSION = git-20131005
 PREFIX    = /usr/local
 MANPREFIX = $(PREFIX)/share/man
 
+PKG_CONFIG = pkg-config
+
 CC      = gcc
-CFLAGS  = -std=c99 -Wall -pedantic -O2 -I$(PREFIX)/include -DHAVE_GIFLIB
+CFLAGS  = -std=c99 -Wall -pedantic -g -I$(PREFIX)/include \
+		  -I -DHAVE_GIFLIB \
+		  `$(PKG_CONFIG) --cflags fontconfig` \
+		  `$(PKG_CONFIG) --cflags freetype2`
 LDFLAGS = -L$(PREFIX)/lib
-LIBS    = -lX11 -lImlib2 -lgif -larchive
+LIBS    = -lX11 -lImlib2 -lgif -larchive -lXft \
+		  `$(PKG_CONFIG) --libs fontconfig` \
+		  `$(PKG_CONFIG) --libs freetype2`
 
 SRC = commands.c exif.c image.c main.c options.c thumbs.c util.c window.c archive.c
 OBJ = $(SRC:.c=.o)

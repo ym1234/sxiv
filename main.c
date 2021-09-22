@@ -664,11 +664,15 @@ void update_info(void)
 			n += snprintf(rt + n, rlen - n, "%0*d/%d", fw, fnum + 1, filearchivecnt);
 		ow_info = info.script == NULL;
 	}
+
+#define TEXTWIDTH(win, text, len) \
+	win_draw_text(win, NULL, NULL, 0, 0, text, len, 0)
 	if (ow_info && file) {
 		fn = strlen(file);
 		if (fn < llen &&
-		    win_textwidth(file, fn, true) +
-		    win_textwidth(rt, n, true) < win.w)
+		    /* win_textwidth(file, fn, true) + */
+		    /* win_textwidth(rt, n, true) < win.w) */
+            TEXTWIDTH(&win, file, fn) + TEXTWIDTH(&win, rt, n))
 		{
 			strncpy(lt, file, llen);
 		} else {
