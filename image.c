@@ -301,6 +301,7 @@ bool img_load(img_t *img, const fileinfo_t *file)
 	if (img == NULL || file == NULL || file->name == NULL || file->path == NULL)
 		return false;
 
+    float current_zoom = img->zoom;
     r = access(file->path, R_OK);
 
 	if (r < 0 && file->archive)
@@ -334,7 +335,7 @@ bool img_load(img_t *img, const fileinfo_t *file)
 	img->re = false;
 	img->checkpan = false;
 	img->dirty = true;
-    i_set_zoom(100);
+    img_zoom(img, current_zoom);
 
 	return true;
 }
