@@ -88,14 +88,14 @@ static const keymap_t keys[] = {
 	{ false,  XK_BackSpace,     i_navigate,           (arg_t) -1 },
 	{ false,  XK_bracketright,  i_navigate,           (arg_t) +10 },
 	{ false,  XK_bracketleft,   i_navigate,           (arg_t) -10 },
-	{ false,  XK_Home,			i_navigate_archive,   (arg_t) -1 },
-	{ false,  XK_End,			i_navigate_archive,   (arg_t) +1 },
+    { true,   XK_p,			    i_navigate_archive,   (arg_t) -1 },
+	{ true,   XK_n,			    i_navigate_archive,   (arg_t) +1 },
 	{ true,   XK_6,             i_alternate,          (arg_t) None },
 	{ false,  XK_g,             it_first,             (arg_t) None },
 	{ false,  XK_G,             it_n_or_last,         (arg_t) None },
 
-	{ true,   XK_n,             i_navigate_frame,     (arg_t) +1 },
-	{ true,   XK_p,             i_navigate_frame,     (arg_t) -1 },
+	{ true,   XK_N,             i_navigate_frame,     (arg_t) +1 },
+	{ true,   XK_P,             i_navigate_frame,     (arg_t) -1 },
 	{ true,   XK_space,         i_toggle_animation,   (arg_t) None },
 
 	/* { false,  XK_m,             it_toggle_image_mark, (arg_t) None }, */
