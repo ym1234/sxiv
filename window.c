@@ -52,6 +52,7 @@ Atom wm_delete_win;
 /* } font; */
 
 static XftFont *font;
+static XftFont *sfont = NULL;
 static int fontheight;
 static double fontsize;
 static int barheight;
@@ -500,15 +501,30 @@ int win_draw_text(win_t *win, XftDraw *d, unsigned long *color, int x, int y,
 	FcCharSet *fccharset;
 	XGlyphInfo ext;
 
+	XftFont *f2;
+
+
 	for (t = text; t - text < len; t = next) {
 		next = t + utf8decode(t, &rune, &err);
 		if (XftCharExists(win->env.dpy, font, rune)) {
 			f = font;
-		} else { /* fallback font */
+		} else if (sfont && XftCharExists(win->env.dpy, sfont, rune)) {
+            f = sfont;
+        } else if(f2 && XftCharExists(win->env.dpy, f2, rune)) {
+            f = f2;
+        } else { /* fallback font */
 			fccharset = FcCharSetCreate();
 			FcCharSetAddChar(fccharset, rune);
 			f = XftFontOpen(win->env.dpy, win->env.scr, FC_CHARSET, FcTypeCharSet,
 			                fccharset, FC_SCALABLE, FcTypeBool, FcTrue, NULL);
+            if (!sfont) {
+                sfont = f;
+            } else {
+                if (f2) { // TODO
+                    XftFontClose(win->env.dpy, f2);
+                }
+                f2 = f;
+            }
 			FcCharSetDestroy(fccharset);
 		}
 		XftTextExtentsUtf8(win->env.dpy, f, (XftChar8*)t, next - t, &ext);
@@ -517,9 +533,14 @@ int win_draw_text(win_t *win, XftDraw *d, unsigned long *color, int x, int y,
 			XftDrawStringUtf8(d, &real_color, f, x, y, (XftChar8*)t, next - t);
 			x += ext.xOff;
 		}
-		if (f != font)
+		if (f != font && f != sfont && f !=f2)
 			XftFontClose(win->env.dpy, f);
 	}
+
+    if (f2) {
+        XftFontClose(win->env.dpy, f2);
+    }
+
 	return tw;
 }
 
