@@ -497,11 +497,11 @@ int win_draw_text(win_t *win, XftDraw *d, unsigned long *color, int x, int y,
 	int err, tw = 0;
 	char *t, *next;
 	uint32_t rune;
-	XftFont *f;
-	FcCharSet *fccharset;
+	XftFont *f = NULL;
+	FcCharSet *fccharset = NULL;
 	XGlyphInfo ext;
 
-	XftFont *f2;
+	XftFont *f2 = NULL; // FIXED(YM): BUG(YM): This needs to be initalized to 0 because of L513
 
 
 	for (t = text; t - text < len; t = next) {
@@ -510,7 +510,7 @@ int win_draw_text(win_t *win, XftDraw *d, unsigned long *color, int x, int y,
 			f = font;
 		} else if (sfont && XftCharExists(win->env.dpy, sfont, rune)) {
             f = sfont;
-        } else if(f2 && XftCharExists(win->env.dpy, f2, rune)) {
+        } else if (f2 && XftCharExists(win->env.dpy, f2, rune)) {
             f = f2;
         } else { /* fallback font */
 			fccharset = FcCharSetCreate();
@@ -522,6 +522,7 @@ int win_draw_text(win_t *win, XftDraw *d, unsigned long *color, int x, int y,
             } else {
                 if (f2) { // TODO
                     XftFontClose(win->env.dpy, f2);
+					f2 = NULL;
                 }
                 f2 = f;
             }

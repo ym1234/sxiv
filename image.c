@@ -37,7 +37,7 @@ enum { MIN_GIF_DELAY = 25 };
 #include "util.h"
 #include "config.h"
 
-extern int manga_mode;
+extern bool manga_mode;
 
 float zoom_min;
 float zoom_max;

@@ -34,10 +34,14 @@ sxiv:	$(OBJ)
 clean:
 	rm -f $(OBJ) sxiv
 
+debug: CFLAGS += -DDEBUG -g -O0 -fsanitize=address -fsanitize=leak
+debug: LDFLAGS += -fsanitize=address -fsanitize=leak
+debug: sxiv
+
 install: all
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	cp sxiv $(DESTDIR)$(PREFIX)/bin/sxiv-manga
-	chmod 755 $(DESTDIR)$(PREFIX)/bin/sxiv
+	chmod 755 $(DESTDIR)$(PREFIX)/bin/sxiv-manga
 	mkdir -p $(DESTDIR)$(MANPREFIX)/man1
 	sed "s!PREFIX!$(PREFIX)!g; s!VERSION!$(VERSION)!g" sxiv.1 > $(DESTDIR)$(MANPREFIX)/man1/sxiv.1
 	chmod 644 $(DESTDIR)$(MANPREFIX)/man1/sxiv.1
